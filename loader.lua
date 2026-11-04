@@ -1,6 +1,6 @@
 --========================================================
 --                   GORILLA HUB LOADER
---        Game Selector + Utopia UI + Key System
+--        Game Selector + Fallen Survival + Key System
 --========================================================
 
 local Players = game:GetService("Players")
@@ -9,14 +9,6 @@ local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
-
-local GITHUB_USER = "ismokeloud"
-local GITHUB_REPO = "GorillaHub"
-local GITHUB_BRANCH = "main"
-local BASE_URL = string.format("https://raw.githubusercontent.com/%s/%s/%s/", GITHUB_USER, GITHUB_REPO, GITHUB_BRANCH)
-
-local Previous = PlayerGui:FindFirstChild("GorillaHub")
-if Previous then Previous:Destroy() end
 
 --========================================================
 -- UTOPIA LIBRARY (Standard Roblox GUI)
@@ -58,6 +50,7 @@ function Library:Window(data)
     Main.BackgroundColor3 = self.Theme["Background"]
     Main.BorderSizePixel = 0
     Main.Parent = ScreenGui
+    Main.Visible = getgenv().GorillaMenuUnlocked
     
     local UICorner = Instance.new("UICorner", Main)
     UICorner.CornerRadius = UDim.new(0, 8)
@@ -222,9 +215,9 @@ ListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 ListLayout.Padding = UDim.new(0, 15)
 
 local Games = {
-    { Name = "FALLEN SURVIVAL", File = "FallenSurvival", Accent = Color3.fromRGB(73, 170, 255) },
-    { Name = "LONE SURVIVAL", File = "LoneSurvival", Accent = Color3.fromRGB(100, 195, 255) },
-    { Name = "DECAY", File = "Decay", Accent = Color3.fromRGB(150, 180, 205) }
+    { Name = "FALLEN SURVIVAL" },
+    { Name = "LONE SURVIVAL" },
+    { Name = "DECAY" }
 }
 
 for i, gameData in ipairs(Games) do
@@ -246,22 +239,27 @@ for i, gameData in ipairs(Games) do
     lbl.TextXAlignment = Enum.TextXAlignment.Left
 
     card.MouseButton1Click:Connect(function()
-        Gui:Destroy()
-        local url = BASE_URL .. "games/" .. gameData.File .. ".lua?t=" .. tostring(os.time())
-        local scriptText = game:HttpGet(url)
-        local func = loadstring(scriptText)
-        
-        -- Intercept the Window creation so it doesn't show until key is entered
-        local originalWindow = Library.Window
-        Library.Window = function(self, data)
-            local win = originalWindow(self, data)
-            getgenv().GorillaPendingWindow = win
-            win.raw.Main.Visible = getgenv().GorillaMenuUnlocked
-            return win
+        Splash.Visible = false
+        if gameData.Name == "FALLEN SURVIVAL" then
+            -- Directly call the setup instead of HTTP Get
+            SetupFallenSurvival()
         end
-        
-        func()
     end)
+end
+
+--========================================================
+-- FALLEN SURVIVAL FEATURES SETUP
+--========================================================
+function SetupFallenSurvival()
+    local Window = Library:Window({ Name = "GorillaHub - Fallen" })
+    local CombatTab = Window:Page({ Name = "Combat" })
+    local CombatSec = CombatTab:Section({ Name = "Silent Aim" })
+    CombatSec:Toggle({ Name = "Enabled" })
+    
+    local ExploitTab = Window:Page({ Name = "Exploits" })
+    local ExploitSec = ExploitTab:Section({ Name = "Exploits" })
+    ExploitSec:Toggle({ Name = "No Fall Damage" })
+    ExploitSec:Toggle({ Name = "Instant Eoka" })
 end
 
 --========================================================
@@ -343,8 +341,12 @@ do
         if tb.Text == _keyCode then
             keyGui:Destroy()
             getgenv().GorillaMenuUnlocked = true
-            if getgenv().GorillaPendingWindow then
-                getgenv().GorillaPendingWindow.raw.Main.Visible = true
+            for _, gui in pairs(PlayerGui:GetChildren()) do
+                if gui.Name == "\0" then
+                    for _, main in pairs(gui:GetChildren()) do
+                        if main:IsA("Frame") then main.Visible = true end
+                    end
+                end
             end
         else
             tb.Text = "invalid key"
@@ -353,7 +355,3 @@ do
         end
     end)
 end
-
---========================================================
--- END LOADER
---========================================================
