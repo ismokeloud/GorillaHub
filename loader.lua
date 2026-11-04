@@ -1,11 +1,10 @@
 --========================================================
 --                   GORILLA HUB LOADER
---        Game Selector + Compatible UI + Key System
+--        Game Selector + Standard UI + Key System
 --========================================================
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 local Player = Players.LocalPlayer
@@ -18,8 +17,6 @@ local BASE_URL = string.format("https://raw.githubusercontent.com/%s/%s/%s/", GI
 
 local Previous = PlayerGui:FindFirstChild("GorillaHub")
 if Previous then Previous:Destroy() end
-local ExistingBlur = Lighting:FindFirstChild("GorillaHubBlur")
-if ExistingBlur then ExistingBlur:Destroy() end
 
 --========================================================
 -- GAME SELECTOR UI
@@ -94,22 +91,12 @@ for i, gameData in ipairs(Games) do
         local url = BASE_URL .. "games/" .. gameData.File .. ".lua?t=" .. tostring(os.time())
         local scriptText = game:HttpGet(url)
         local func = loadstring(scriptText)
-        
-        -- Intercept the Window creation so it doesn't show until key is entered
-        local originalWindow = Library.Window
-        Library.Window = function(self, data)
-            local win = originalWindow(self, data)
-            getgenv().GorillaPendingWindow = win
-            win.raw.Main.Visible = getgenv().GorillaMenuUnlocked
-            return win
-        end
-        
         func()
     end)
 end
 
 --========================================================
--- FALLBACK UTOPIA UI & KEY SYSTEM
+-- UTOPIA UI WRAPPER (STANDARD ROBLOX GUI)
 --========================================================
 
 local Library = {}
@@ -190,12 +177,20 @@ function Library:Window(data)
         pageFrame.Visible = false
         pageFrame.Parent = self.raw.PageHolder
 
+        btn.MouseButton1Click:Connect(function()
+            for _, v in pairs(self.raw.PageHolder:GetChildren()) do
+                if v:IsA("Frame") then v.Visible = false end
+            end
+            pageFrame.Visible = true
+        end)
+
         local page = { raw = pageFrame }
         function page:Section(o)
             local sec = Instance.new("Frame")
             sec.Size = UDim2.new(1, -10, 0, 100)
-            sec.BackgroundColor3 = self.raw.BackgroundColor3
+            sec.BackgroundColor3 = self.Theme["Option Background"]
             sec.Parent = self.raw
+            Instance.new("UICorner", sec).CornerRadius = UDim.new(0, 4)
             return {
                 Toggle = function(_, opts)
                     local t = Instance.new("TextButton")
@@ -216,6 +211,10 @@ function Library:Window(data)
     end
     return window
 end
+
+--========================================================
+-- KEY SYSTEM
+--========================================================
 
 local _keyCode = "SCORPION-WTF-JJZ9V-BMSCZ-8H6JY-127U8"
 do
