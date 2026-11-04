@@ -13,7 +13,7 @@ local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 
 -- REPLACE these two with your own GitHub details
-local GITHUB_USER = "YourName"
+local GITHUB_USER = "ismokeloud"
 local GITHUB_REPO = "GorillaHub"
 local GITHUB_BRANCH = "main"
 local BASE_URL = string.format(
