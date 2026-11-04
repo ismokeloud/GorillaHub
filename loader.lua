@@ -122,33 +122,7 @@ end
 -- OCTOHOOK + LIBRARY COMPAT LAYER
 --========================================================
 
-local _signalCode = 'local Signal = {}\nSignal.__index = Signal\nSignal.ClassName = "Signal"\n\nlocal Connection = {}\nConnection.__index = Connection\nConnection.ClassName = "Connection"\n\nfunction Connection.new(signal, fn)\n    return setmetatable({ _signal = signal, _fn = fn, Connected = true }, Connection)\nend\nfunction Connection:IsConnected()\n    return self.Connected == true and self._signal ~= nil\nend\nfunction Connection:Disconnect()\n    self.Connected = false\n    self._signal = nil\n    self._fn = nil\nend\nConnection.Destroy = Connection.Disconnect\n\nfunction Signal.new()\n    return setmetatable({ _handlers = {} }, Signal)\nend\nfunction Signal.isSignal(value)\n    return type(value) == "table" and getmetatable(value) == Signal\nend\nfunction Signal:Connect(fn)\n    local conn = Connection.new(self, fn)\n    table.insert(self._handlers, conn)\n    return conn\nend\nfunction Signal:Fire(...)\n    for i = #self._handlers, 1, -1 do\n        local c = self._handlers[i]\n        if c.Connected then\n            local ok, err = pcall(c._fn, ...)\n            if not ok then warn(err) end\n        else\n            table.remove(self._handlers, i)\n        end\n    end\nend\nfunction Signal:Wait()\n    local co = coroutine.running()\n    local conn\n    conn = self:Connect(function(...)\n        if conn then conn:Disconnect() end\n        task.spawn(co, ...)\n    end)\n    return coroutine.yield()\nend\nfunction Signal:Once(fn)\n    local conn\n    conn = self:Connect(function(...)\n        if conn then conn:Disconnect() end\n        fn(...)\n    end)\n    return conn\nend\nfunction Signal:DisconnectAll()\n    for i = #self._handlers, 1, -1 do\n        local c = self._handlers[i]\n        if c.Connected then c:Disconnect() end\n        table.remove(self._handlers, i)\n    end\nend\nSignal.Destroy = Signal:DisconnectAll\n\nsetmetatable(Signal, {\n    __index = function(_, key)\n        error(string.format("Attempt to get Signal::%s (not a valid member)", tostring(key)), 2)\n    end,\n    __newindex = function(_, key, _)\n        error(string.format("Attempt to set Signal::%s (not a valid member)", tostring(key)), 2)\n    end,\n})\n\nreturn Signal'
-
--- Fetch Octohook from the original repository (ensure it's raw)
-local _octoSrc = game:HttpGet("https://raw.githubusercontent.com/GhostDuckyy/UI-Libraries/main/octohook/source.lua")
-if not _octoSrc or _octoSrc:find("404: Not Found") or not string.find(_octoSrc, "local library =") then
-    warn("[GorillaHub] FAILED TO FETCH OCTOHOOK. The link is dead or returns HTML. Using a hardcoded fallback...")
-    -- If GitHub fails, we won't crash; we'll just warn you.
-    return
-end
-local _marker = "signal = loadstring(game:HttpGet('https://raw.githubusercontent.com/Quenty/NevermoreEngine/main/src/signal/src/Shared/Signal.lua'))();"
-local _mi = _octoSrc:find(_marker, 1, true)
-if _mi then
-    _octoSrc = _octoSrc:sub(1, _mi - 1)
-        .. "signal = (function()\n" .. _signalCode .. "\nend)();"
-        .. _octoSrc:sub(_mi + #_marker)
-end
-
-local loadOk, Octo = pcall(function()
-    return loadstring(_octoSrc)()
-end)
-
-if not loadOk or not Octo then
-    warn("[GorillaHub] FAILED TO LOAD OCTOHOOK UI. Your executor may not support loadstring. Error: " .. tostring(Octo))
-    return
-end
-
--- Synapse fallback
+-- Synapse fallback MUST run before Octohook tries to use it
 do
     local b64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     local function b64decode(data)
@@ -183,6 +157,31 @@ do
             syn.protect_gui = syn.protect_gui or protectGui
         end)
     end
+end
+
+local _signalCode = 'local Signal = {}\nSignal.__index = Signal\nSignal.ClassName = "Signal"\n\nlocal Connection = {}\nConnection.__index = Connection\nConnection.ClassName = "Connection"\n\nfunction Connection.new(signal, fn)\n    return setmetatable({ _signal = signal, _fn = fn, Connected = true }, Connection)\nend\nfunction Connection:IsConnected()\n    return self.Connected == true and self._signal ~= nil\nend\nfunction Connection:Disconnect()\n    self.Connected = false\n    self._signal = nil\n    self._fn = nil\nend\nConnection.Destroy = Connection.Disconnect\n\nfunction Signal.new()\n    return setmetatable({ _handlers = {} }, Signal)\nend\nfunction Signal.isSignal(value)\n    return type(value) == "table" and getmetatable(value) == Signal\nend\nfunction Signal:Connect(fn)\n    local conn = Connection.new(self, fn)\n    table.insert(self._handlers, conn)\n    return conn\nend\nfunction Signal:Fire(...)\n    for i = #self._handlers, 1, -1 do\n        local c = self._handlers[i]\n        if c.Connected then\n            local ok, err = pcall(c._fn, ...)\n            if not ok then warn(err) end\n        else\n            table.remove(self._handlers, i)\n        end\n    end\nend\nfunction Signal:Wait()\n    local co = coroutine.running()\n    local conn\n    conn = self:Connect(function(...)\n        if conn then conn:Disconnect() end\n        task.spawn(co, ...)\n    end)\n    return coroutine.yield()\nend\nfunction Signal:Once(fn)\n    local conn\n    conn = self:Connect(function(...)\n        if conn then conn:Disconnect() end\n        fn(...)\n    end)\n    return conn\nend\nfunction Signal:DisconnectAll()\n    for i = #self._handlers, 1, -1 do\n        local c = self._handlers[i]\n        if c.Connected then c:Disconnect() end\n        table.remove(self._handlers, i)\n    end\nend\nSignal.Destroy = Signal:DisconnectAll\n\nsetmetatable(Signal, {\n    __index = function(_, key)\n        error(string.format("Attempt to get Signal::%s (not a valid member)", tostring(key)), 2)\n    end,\n    __newindex = function(_, key, _)\n        error(string.format("Attempt to set Signal::%s (not a valid member)", tostring(key)), 2)\n    end,\n})\n\nreturn Signal'
+
+local _octoSrc = game:HttpGet("https://raw.githubusercontent.com/GhostDuckyy/UI-Libraries/main/octohook/source.lua")
+if not _octoSrc or _octoSrc:find("404: Not Found") or not string.find(_octoSrc, "local library =") then
+    warn("[GorillaHub] FAILED TO FETCH OCTOHOOK. The link is dead or returns HTML.")
+    return
+end
+
+local _marker = "signal = loadstring(game:HttpGet('https://raw.githubusercontent.com/Quenty/NevermoreEngine/main/src/signal/src/Shared/Signal.lua'))();"
+local _mi = _octoSrc:find(_marker, 1, true)
+if _mi then
+    _octoSrc = _octoSrc:sub(1, _mi - 1)
+        .. "signal = (function()\n" .. _signalCode .. "\nend)();"
+        .. _octoSrc:sub(_mi + #_marker)
+end
+
+local loadOk, Octo = pcall(function()
+    return loadstring(_octoSrc)()
+end)
+
+if not loadOk or not Octo then
+    warn("[GorillaHub] FAILED TO LOAD OCTOHOOK UI. Error: " .. tostring(Octo))
+    return
 end
 
 Octo.cheatname = "GorillaHub"
