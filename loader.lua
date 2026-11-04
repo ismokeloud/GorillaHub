@@ -126,7 +126,7 @@ local _signalCode = 'local Signal = {}\nSignal.__index = Signal\nSignal.ClassNam
 
 -- Fetch Octohook from the original repository (ensure it's raw)
 local _octoSrc = game:HttpGet("https://raw.githubusercontent.com/GhostDuckyy/UI-Libraries/main/octohook/source.lua")
-if not _octoSrc or _octoSrc:find("404: Not Found") or not string.find(_octoSrc, "local Library =") then
+if not _octoSrc or _octoSrc:find("404: Not Found") or not string.find(_octoSrc, "local library =") then
     warn("[GorillaHub] FAILED TO FETCH OCTOHOOK. The link is dead or returns HTML. Using a hardcoded fallback...")
     -- If GitHub fails, we won't crash; we'll just warn you.
     return
