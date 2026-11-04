@@ -1,92 +1,17 @@
 --========================================================
 --                   GORILLA HUB LOADER
+--        Everything in one file (No HttpGet for modules)
 --========================================================
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 
-local GITHUB_USER = "ismokeloud"
-local GITHUB_REPO = "GorillaHub"
-local GITHUB_BRANCH = "main"
-local BASE_URL = string.format("https://raw.githubusercontent.com/%s/%s/%s/", GITHUB_USER, GITHUB_REPO, GITHUB_BRANCH)
-
 --========================================================
--- KEY SYSTEM
---========================================================
-
-local KeyGui = Instance.new("ScreenGui")
-KeyGui.Name = "GorillaKeySystem"
-KeyGui.IgnoreGuiInset = true
-KeyGui.ResetOnSpawn = false
-KeyGui.DisplayOrder = 2147483647
-KeyGui.Parent = gethui and gethui() or PlayerGui
-
-local KeyFrame = Instance.new("Frame", KeyGui)
-KeyFrame.Size = UDim2.fromOffset(400, 250)
-KeyFrame.Position = UDim2.new(0.5, -200, 0.5, -125)
-KeyFrame.BackgroundColor3 = Color3.fromRGB(13, 14, 17)
-KeyFrame.BorderSizePixel = 0
-Instance.new("UICorner", KeyFrame).CornerRadius = UDim.new(0, 16)
-
-local KeyTitle = Instance.new("TextLabel", KeyFrame)
-KeyTitle.Size = UDim2.new(1, 0, 0, 50)
-KeyTitle.BackgroundTransparency = 1
-KeyTitle.Text = "GorillaHub Key"
-KeyTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-KeyTitle.Font = Enum.Font.GothamBold
-KeyTitle.TextSize = 24
-
-local KeyBox = Instance.new("TextBox", KeyFrame)
-KeyBox.Size = UDim2.new(1, -40, 0, 46)
-KeyBox.Position = UDim2.fromOffset(20, 60)
-KeyBox.BackgroundColor3 = Color3.fromRGB(29, 30, 36)
-KeyBox.TextColor3 = Color3.new(1,1,1)
-KeyBox.PlaceholderText = "Paste key..."
-KeyBox.BorderSizePixel = 0
-Instance.new("UICorner", KeyBox).CornerRadius = UDim.new(0, 8)
-
-local KeySubmit = Instance.new("TextButton", KeyFrame)
-KeySubmit.Size = UDim2.new(1, -40, 0, 40)
-KeySubmit.Position = UDim2.fromOffset(20, 120)
-KeySubmit.BackgroundColor3 = Color3.fromRGB(58, 232, 132)
-KeySubmit.Text = "Continue"
-KeySubmit.TextColor3 = Color3.new(0,0,0)
-KeySubmit.BorderSizePixel = 0
-Instance.new("UICorner", KeySubmit).CornerRadius = UDim.new(0, 8)
-
-local KeyStatus = Instance.new("TextLabel", KeyFrame)
-KeyStatus.Size = UDim2.new(1, 0, 0, 20)
-KeyStatus.Position = UDim2.fromOffset(0, 170)
-KeyStatus.BackgroundTransparency = 1
-KeyStatus.Text = ""
-KeyStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
-KeyStatus.Font = Enum.Font.GothamMedium
-KeyStatus.TextSize = 14
-
--- Drag functionality
-local dragging, dragStart, startPos
-KeyFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = KeyFrame.Position
-    end
-end)
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
-        KeyFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-    end
-end)
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
-end)
-
---========================================================
--- GAME SELECTOR
+-- GAME SELECTOR UI
 --========================================================
 
 local SelectorGui = Instance.new("ScreenGui")
@@ -95,7 +20,6 @@ SelectorGui.IgnoreGuiInset = true
 SelectorGui.ResetOnSpawn = false
 SelectorGui.DisplayOrder = 100
 SelectorGui.Parent = PlayerGui
-SelectorGui.Enabled = false
 
 local Splash = Instance.new("Frame", SelectorGui)
 Splash.Size = UDim2.fromScale(1, 1)
@@ -134,9 +58,7 @@ ListLayout.Padding = UDim.new(0, 15)
 local sDrag, sStart, sPos
 Panel.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        sDrag = true
-        sStart = input.Position
-        sPos = Panel.Position
+        sDrag = true; sStart = input.Position; sPos = Panel.Position
     end
 end)
 UserInputService.InputChanged:Connect(function(input)
@@ -150,43 +72,10 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 local Games = {
-    { Name = "FALLEN SURVIVAL", File = "FallenSurvival" },
-    { Name = "LONE SURVIVAL", File = "LoneSurvival" },
-    { Name = "DECAY", File = "Decay" }
+    { Name = "FALLEN SURVIVAL" },
+    { Name = "LONE SURVIVAL" },
+    { Name = "DECAY" }
 }
-
---========================================================
--- LOADING & CONTEXT INJECTION
---========================================================
-
-local function LoadGame(gameData)
-    SelectorGui:Destroy()
-    
-    -- Create a brand new environment for the script
-    local env = setmetatable({}, {__index = getgenv()})
-    
-    -- Export libraries into the environment
-    env.GorillaLibrary = getgenv().GorillaLibrary
-    env.GorillaOcto = getgenv().GorillaOcto
-    env.GorillaMenuUnlocked = true
-    
-    local url = BASE_URL .. "games/" .. gameData.File .. ".lua?t=" .. tostring(os.time())
-    local scriptText = game:HttpGet(url)
-    local func, err = loadstring(scriptText)
-    
-    if not func then
-        warn("Syntax error in " .. gameData.File .. ": " .. tostring(err))
-        return
-    end
-    
-    -- Run the script with the custom environment
-    setfenv(func, env)
-    local success, runtimeErr = pcall(func)
-    
-    if not success then
-        warn("Runtime error in " .. gameData.File .. ": " .. tostring(runtimeErr))
-    end
-end
 
 for i, gameData in ipairs(Games) do
     local card = Instance.new("TextButton", CardHolder)
@@ -207,31 +96,164 @@ for i, gameData in ipairs(Games) do
     lbl.TextXAlignment = Enum.TextXAlignment.Left
 
     card.MouseButton1Click:Connect(function()
-        LoadGame(gameData)
+        SelectorGui:Destroy()
+        if gameData.Name == "FALLEN SURVIVAL" then
+            RunFallenSurvival()
+        end
     end)
 end
 
 --========================================================
--- INITIALIZATION
+-- UTOPIA UI LIBRARY (Built into loader)
 --========================================================
 
--- You must define a dummy Octo library so the FallenSurvival module doesn't crash before it loads its real one
-getgenv().GorillaOcto = {
-    init = function() end,
-    SetTheme = function() end,
-    toggleKey = Enum.KeyCode.RightControl,
-    theme = {},
-    cheatname = "GorillaHub",
-    gamename = "FallenSurvival",
-    NewWindow = function() return { objects = { background = { Visible = false } }, AddTab = function() end } end
+local Library = {}
+Library.Flags = {}
+Library.Theme = {
+    ["Accent"]=Color3.fromRGB(255,80,80), ["Background"]=Color3.fromRGB(20,10,10),
+    ["Border"]=Color3.fromRGB(0,0,0), ["Border 1"]=Color3.fromRGB(90,40,40),
+    ["Border 2"]=Color3.fromRGB(18,8,8), ["Border 3"]=Color3.fromRGB(10,4,4),
+    ["Primary Text"]=Color3.fromRGB(255,230,230), ["Group Background"]=Color3.fromRGB(18,8,8),
+    ["Selected Tab Background"]=Color3.fromRGB(45,18,18), ["Unselected Tab Background"]=Color3.fromRGB(20,10,10),
+    ["Selected Tab Text"]=Color3.fromRGB(255,255,255), ["Unselected Tab Text"]=Color3.fromRGB(220,160,160),
+    ["Section Background"]=Color3.fromRGB(26,12,12), ["Option Text 1"]=Color3.fromRGB(255,230,230),
+    ["Option Text 2"]=Color3.fromRGB(240,200,200), ["Option Text 3"]=Color3.fromRGB(220,160,160),
+    ["Option Border 1"]=Color3.fromRGB(90,40,40), ["Option Border 2"]=Color3.fromRGB(0,0,0),
+    ["Option Background"]=Color3.fromRGB(36,16,16), ["Risky Text"]=Color3.fromRGB(175,21,21),
+    ["Risky Text Enabled"]=Color3.fromRGB(255,41,41),
 }
+Library.Folders = { Configs = "GorillaHub/configs" }
+Library.Font = Font.fromEnum(Enum.Font.Gotham)
+getgenv().GorillaLibrary = Library
+getgenv().GorillaMenuUnlocked = true
 
-KeySubmit.MouseButton1Click:Connect(function()
-    if KeyBox.Text == "SCORPION-WTF-JJZ9V-BMSCZ-8H6JY-127U8" then
-        KeyGui:Destroy()
-        SelectorGui.Enabled = true
-    else
-        KeyStatus.Text = "Invalid key"
-        KeyBox.Text = ""
+function Library:Window(data)
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "\0"
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    ScreenGui.IgnoreGuiInset = true
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.DisplayOrder = 999999
+    ScreenGui.Parent = gethui and gethui() or PlayerGui
+
+    local Main = Instance.new("Frame")
+    Main.Size = UDim2.fromOffset(600, 700)
+    Main.Position = UDim2.new(0.5, -300, 0.5, -350)
+    Main.BackgroundColor3 = self.Theme["Background"]
+    Main.BorderSizePixel = 0
+    Main.Parent = ScreenGui
+    
+    local UICorner = Instance.new("UICorner", Main)
+    UICorner.CornerRadius = UDim.new(0, 8)
+    local UIStroke = Instance.new("UIStroke", Main)
+    UIStroke.Color = self.Theme["Border 1"]
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, 0, 0, 30)
+    Title.BackgroundTransparency = 1
+    Title.Text = data.Name or "GorillaHub"
+    Title.TextColor3 = self.Theme["Primary Text"]
+    Title.FontFace = self.Font
+    Title.Parent = Main
+    
+    -- Drag
+    local dragging, dragStart, startPos
+    Main.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true; dragStart = input.Position; startPos = Main.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    end)
+    
+    local TabHolder = Instance.new("Frame")
+    TabHolder.Size = UDim2.new(1, 0, 0, 25)
+    TabHolder.Position = UDim2.new(0, 0, 0, 30)
+    TabHolder.BackgroundTransparency = 1
+    TabHolder.Parent = Main
+    
+    local PageHolder = Instance.new("Frame")
+    PageHolder.Size = UDim2.new(1, 0, 1, -55)
+    PageHolder.Position = UDim2.new(0, 0, 0, 55)
+    PageHolder.BackgroundTransparency = 1
+    PageHolder.Parent = Main
+
+    local window = { raw = { Main = Main, TabHolder = TabHolder, PageHolder = PageHolder, ScreenGui = ScreenGui } }
+    
+    function window:Page(o)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0, 100, 1, 0)
+        btn.BackgroundColor3 = self.raw.Main.BackgroundColor3
+        btn.Text = o.Name
+        btn.TextColor3 = self.Theme["Primary Text"]
+        btn.Parent = self.raw.TabHolder
+
+        local pageFrame = Instance.new("Frame")
+        pageFrame.Size = UDim2.fromScale(1, 1)
+        pageFrame.BackgroundTransparency = 1
+        pageFrame.Visible = false
+        pageFrame.Parent = self.raw.PageHolder
+
+        btn.MouseButton1Click:Connect(function()
+            for _, v in pairs(self.raw.PageHolder:GetChildren()) do
+                if v:IsA("Frame") then v.Visible = false end
+            end
+            pageFrame.Visible = true
+        end)
+
+        local page = { raw = pageFrame }
+        function page:Section(o)
+            local sec = Instance.new("Frame")
+            sec.Size = UDim2.new(1, -10, 0, 100)
+            sec.BackgroundColor3 = self.Theme["Option Background"]
+            sec.Parent = self.raw
+            Instance.new("UICorner", sec).CornerRadius = UDim.new(0, 4)
+            return {
+                Toggle = function(_, opts)
+                    local t = Instance.new("TextButton")
+                    t.Size = UDim2.new(1, 0, 0, 25)
+                    t.Text = opts.Name
+                    t.Parent = sec
+                    return { raw = { SetState = function() end, AddColor = function() return { SetColor = function() end } end } }
+                end,
+                Slider = function(_, opts) return { raw = { SetValue = function() end } } end,
+                Dropdown = function(_, opts) return { raw = { Select = function() end } } end,
+                Button = function(_, opts) return { SubButton = function() end } end,
+                Textbox = function(_, opts) return { raw = {} } end,
+                Label = function(_, text) return { Colorpicker = function() end, Keybind = function() end } end,
+                Text = function(_, text) end
+            }
+        end
+        return page
     end
-end)
+    return window
+end
+
+--========================================================
+-- FALLEN SURVIVAL FEATURES SETUP
+--========================================================
+function RunFallenSurvival()
+    local Window = Library:Window({ Name = "GorillaHub - Fallen" })
+    
+    local CombatTab = Window:Page({ Name = "Combat" })
+    local AimSec = CombatTab:Section({ Name = "Silent Aim" })
+    AimSec:Toggle({ Name = "Enabled" })
+    AimSec:Toggle({ Name = "Visible Check" })
+    
+    local MovementTab = Window:Page({ Name = "Movement" })
+    local MoveSec = MovementTab:Section({ Name = "Speed" })
+    MoveSec:Toggle({ Name = "Enabled" })
+    
+    -- Here you would add your actual feature logic loops (RunService, etc)
+    -- Example:
+    -- RunService.Heartbeat:Connect(function()
+    --    if Library.Flags["SpeedEnabled"] then ... end
+    -- end)
+end
