@@ -1,6 +1,6 @@
 --========================================================
 --                   GORILLA HUB LOADER
---        Game Selector + Standard UI + Key System
+--        Game Selector + Utopia UI + Key System
 --========================================================
 
 local Players = game:GetService("Players")
@@ -19,84 +19,7 @@ local Previous = PlayerGui:FindFirstChild("GorillaHub")
 if Previous then Previous:Destroy() end
 
 --========================================================
--- GAME SELECTOR UI
---========================================================
-
-local Gui = Instance.new("ScreenGui")
-Gui.Name = "GorillaHub"
-Gui.IgnoreGuiInset = true
-Gui.ResetOnSpawn = false
-Gui.DisplayOrder = 100
-Gui.Parent = PlayerGui
-
-local Splash = Instance.new("Frame", Gui)
-Splash.Size = UDim2.fromScale(1, 1)
-Splash.BackgroundColor3 = Color3.fromRGB(5, 8, 13)
-Splash.BackgroundTransparency = 0.1
-Splash.BorderSizePixel = 0
-
-local Panel = Instance.new("Frame", Splash)
-Panel.Size = UDim2.fromOffset(710, 465)
-Panel.Position = UDim2.fromScale(0.5, 0.5)
-Panel.AnchorPoint = Vector2.new(0.5, 0.5)
-Panel.BackgroundColor3 = Color3.fromRGB(9, 12, 18)
-Panel.BorderSizePixel = 0
-Instance.new("UICorner", Panel).CornerRadius = UDim.new(0, 14)
-
-local Title = Instance.new("TextLabel", Panel)
-Title.Text = "CHOOSE YOUR EXPERIENCE"
-Title.Position = UDim2.fromOffset(29, 99)
-Title.Size = UDim2.new(1, -58, 0, 27)
-Title.Font = Enum.Font.GothamBlack
-Title.TextSize = 19
-Title.TextColor3 = Color3.fromRGB(232, 240, 250)
-Title.BackgroundTransparency = 1
-Title.TextXAlignment = Enum.TextXAlignment.Left
-
-local CardHolder = Instance.new("Frame", Panel)
-CardHolder.Position = UDim2.fromOffset(29, 166)
-CardHolder.Size = UDim2.fromOffset(652, 235)
-CardHolder.BackgroundTransparency = 1
-local ListLayout = Instance.new("UIListLayout", CardHolder)
-ListLayout.FillDirection = Enum.FillDirection.Horizontal
-ListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-ListLayout.Padding = UDim.new(0, 15)
-
-local Games = {
-    { Name = "FALLEN SURVIVAL", File = "FallenSurvival", Accent = Color3.fromRGB(73, 170, 255) },
-    { Name = "LONE SURVIVAL", File = "LoneSurvival", Accent = Color3.fromRGB(100, 195, 255) },
-    { Name = "DECAY", File = "Decay", Accent = Color3.fromRGB(150, 180, 205) }
-}
-
-for i, gameData in ipairs(Games) do
-    local card = Instance.new("TextButton", CardHolder)
-    card.Size = UDim2.fromOffset(207, 220)
-    card.BackgroundColor3 = Color3.fromRGB(16, 22, 32)
-    card.Text = ""
-    card.AutoButtonColor = false
-    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 10)
-    
-    local lbl = Instance.new("TextLabel", card)
-    lbl.Text = gameData.Name
-    lbl.Position = UDim2.fromOffset(12, 122)
-    lbl.Size = UDim2.new(1, -24, 0, 23)
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextSize = 12
-    lbl.TextColor3 = Color3.new(1,1,1)
-    lbl.BackgroundTransparency = 1
-    lbl.TextXAlignment = Enum.TextXAlignment.Left
-
-    card.MouseButton1Click:Connect(function()
-        Splash.Visible = false
-        local url = BASE_URL .. "games/" .. gameData.File .. ".lua?t=" .. tostring(os.time())
-        local scriptText = game:HttpGet(url)
-        local func = loadstring(scriptText)
-        func()
-    end)
-end
-
---========================================================
--- UTOPIA UI WRAPPER (STANDARD ROBLOX GUI)
+-- UTOPIA LIBRARY (Standard Roblox GUI)
 --========================================================
 
 local Library = {}
@@ -148,6 +71,27 @@ function Library:Window(data)
     Title.TextColor3 = self.Theme["Primary Text"]
     Title.FontFace = self.Font
     Title.Parent = Main
+    
+    -- Drag functionality
+    local dragging, dragStart, startPos
+    Main.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = Main.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
     
     local TabHolder = Instance.new("Frame")
     TabHolder.Size = UDim2.new(1, 0, 0, 25)
@@ -213,6 +157,114 @@ function Library:Window(data)
 end
 
 --========================================================
+-- GAME SELECTOR UI
+--========================================================
+
+local Gui = Instance.new("ScreenGui")
+Gui.Name = "GorillaHubSelector"
+Gui.IgnoreGuiInset = true
+Gui.ResetOnSpawn = false
+Gui.DisplayOrder = 100
+Gui.Parent = PlayerGui
+
+local Splash = Instance.new("Frame", Gui)
+Splash.Size = UDim2.fromScale(1, 1)
+Splash.BackgroundColor3 = Color3.fromRGB(5, 8, 13)
+Splash.BackgroundTransparency = 0.1
+Splash.BorderSizePixel = 0
+
+local Panel = Instance.new("Frame", Splash)
+Panel.Size = UDim2.fromOffset(710, 465)
+Panel.Position = UDim2.fromScale(0.5, 0.5)
+Panel.AnchorPoint = Vector2.new(0.5, 0.5)
+Panel.BackgroundColor3 = Color3.fromRGB(9, 12, 18)
+Panel.BorderSizePixel = 0
+Instance.new("UICorner", Panel).CornerRadius = UDim.new(0, 14)
+
+-- Game Selector Dragging
+local dragging, dragStart, startPos
+Panel.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = Panel.Position
+    end
+end)
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        Panel.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+    end
+end)
+
+local Title = Instance.new("TextLabel", Panel)
+Title.Text = "CHOOSE YOUR EXPERIENCE"
+Title.Position = UDim2.fromOffset(29, 99)
+Title.Size = UDim2.new(1, -58, 0, 27)
+Title.Font = Enum.Font.GothamBlack
+Title.TextSize = 19
+Title.TextColor3 = Color3.fromRGB(232, 240, 250)
+Title.BackgroundTransparency = 1
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+local CardHolder = Instance.new("Frame", Panel)
+CardHolder.Position = UDim2.fromOffset(29, 166)
+CardHolder.Size = UDim2.fromOffset(652, 235)
+CardHolder.BackgroundTransparency = 1
+local ListLayout = Instance.new("UIListLayout", CardHolder)
+ListLayout.FillDirection = Enum.FillDirection.Horizontal
+ListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+ListLayout.Padding = UDim.new(0, 15)
+
+local Games = {
+    { Name = "FALLEN SURVIVAL", File = "FallenSurvival", Accent = Color3.fromRGB(73, 170, 255) },
+    { Name = "LONE SURVIVAL", File = "LoneSurvival", Accent = Color3.fromRGB(100, 195, 255) },
+    { Name = "DECAY", File = "Decay", Accent = Color3.fromRGB(150, 180, 205) }
+}
+
+for i, gameData in ipairs(Games) do
+    local card = Instance.new("TextButton", CardHolder)
+    card.Size = UDim2.fromOffset(207, 220)
+    card.BackgroundColor3 = Color3.fromRGB(16, 22, 32)
+    card.Text = ""
+    card.AutoButtonColor = false
+    Instance.new("UICorner", card).CornerRadius = UDim.new(0, 10)
+    
+    local lbl = Instance.new("TextLabel", card)
+    lbl.Text = gameData.Name
+    lbl.Position = UDim2.fromOffset(12, 122)
+    lbl.Size = UDim2.new(1, -24, 0, 23)
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 12
+    lbl.TextColor3 = Color3.new(1,1,1)
+    lbl.BackgroundTransparency = 1
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    card.MouseButton1Click:Connect(function()
+        Gui:Destroy()
+        local url = BASE_URL .. "games/" .. gameData.File .. ".lua?t=" .. tostring(os.time())
+        local scriptText = game:HttpGet(url)
+        local func = loadstring(scriptText)
+        
+        -- Intercept the Window creation so it doesn't show until key is entered
+        local originalWindow = Library.Window
+        Library.Window = function(self, data)
+            local win = originalWindow(self, data)
+            getgenv().GorillaPendingWindow = win
+            win.raw.Main.Visible = getgenv().GorillaMenuUnlocked
+            return win
+        end
+        
+        func()
+    end)
+end
+
+--========================================================
 -- KEY SYSTEM
 --========================================================
 
@@ -265,6 +317,27 @@ do
     submit.TextColor3 = Color3.new(0,0,0)
     submit.Parent = win
     Instance.new("UICorner", submit).CornerRadius = UDim.new(0, 10)
+
+    -- Key system dragging
+    local kDrag, kStart, kPos
+    win.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            kDrag = true
+            kStart = input.Position
+            kPos = win.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if kDrag and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - kStart
+            win.Position = UDim2.new(kPos.X.Scale, kPos.X.Offset + delta.X, kPos.Y.Scale, kPos.Y.Offset + delta.Y)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            kDrag = false
+        end
+    end)
 
     submit.MouseButton1Click:Connect(function()
         if tb.Text == _keyCode then
